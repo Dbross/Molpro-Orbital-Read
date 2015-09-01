@@ -1,0 +1,356 @@
+#!/usr/bin/env python
+
+# Starting with pseudo Canonical orbitals
+class orbital:
+    global atomic_labels,endofmo,atomic_labels_s,startofmo
+    atomic_labels=['1s', '2px', '2py', '2pz', '3d0', '3d1+', '3d1-', '3d2+', '3d2-', '4f0', '4f1+', '4f1-', '4f2+', '4f2-', '4f3+', '4f3-','5g0','5g4+','5g2+','5g1+','5g3+','5g1-','5g3-','5g2-','5g4-','6h0','6h2+','6h4+','7i0','7i2+','7i4+','7i6+','6h1+','6h3+','6h5+','7i5+','7i3+','7i1+','6h1-','6h3-','6h5-','7i5-','7i3-','7i1-','6h4-','6h2-','7i2-','7i6-','6i4-' ]
+    atomic_labels_s=[]
+    for x in xrange(len(atomic_labels)):
+        tmp=atomic_labels[x]
+        tmp2=tmp[1:]
+        atomic_labels_s.append(tmp2)
+#    atomic_labels_s=['s', 'px', 'py', 'pz', 'd0', 'd1+', 'd1-', 'd2+', 'd2-', 'f0', 'f1+', 'f1-', 'f2+', 'f2-', 'f3+', 'f3-', 'g0','g4+','g2+','g1+','g3+','g1-','g3-','g2-','g4-'] 
+#    endofmo=['Total charge','Canonical orbital dump','CI vector'] 
+    endofmo=['Total','Canonical ','CI','HOMO','dump', 'ORBITAL', 'SYMMETRY' ] 
+    startofmo=['NATURAL ORBITALS','PSEUDO CANONICAL ORBITALS','ELECTRON ORBITALS']
+
+    def __init__(self,inp):
+        self.row=inp
+        self.a_orbs=[]
+        self.atoml=[]
+        self.a_orbs_sym=[]
+        self.atoml_sym=[]
+        self.a_orb_label=[]
+        self.rowread=[]
+        self.rowtype=[]
+        self.m_orb_label=[]
+        self.m_orb_e_num=[]
+        self.m_orb_energy=[]
+        self.m_orb_coef=[]
+        self.m_orb_label_sym=[]
+        self.m_orb_e_num_sym=[]
+        self.m_orb_energy_sym=[]
+        self.m_orb_coef_sym=[]
+        self.mo_len=[]
+
+    def split_a_row(self,row,rownum):
+        tmporbs=row.split()
+        self.rowread.append(rownum)
+        self.rowtype.append('atomic orbitals')
+        for z in xrange(0,len(tmporbs),2):
+            self.add_a_orb(tmporbs[z],tmporbs[z+1])
+
+    def add_a_orb(self,atomnum,orb):
+        self.atoml.append(int(atomnum))
+        self.a_orbs.append(orb)
+
+    def label_a_orb(self):
+        for x in xrange(len(self.a_orbs_sym)):
+            tmplabel=[]
+            tmplist=[]
+            for y in xrange(len(self.a_orbs_sym[x])):
+                for z in atomic_labels_s:
+                    if z in self.a_orbs_sym[x][y]:
+                        tmp=z+str(self.atoml_sym[x][y])
+                        tmplist.append(tmp)
+                        tmplabel.append(str(self.atoml_sym[x][y]) + ' ' + str(tmplist.count(tmp)) + z)
+                        break
+            self.a_orb_label.append(tmplabel)
+
+    def readrow(self):
+        self.stop2=0
+        self.currentrow=0
+        while True:
+            if self.currentrow>=len(self.row):
+                break
+            if self.stop2==1:
+                break
+            for z in xrange(len(startofmo)):
+                if startofmo[z] in self.row[self.currentrow]:
+                    if z==2:
+                        self.rhf=1
+                        self.readrow2()
+                    else:
+                        self.rhf=0
+                        self.readrow2()
+                    break
+            self.currentrow +=1
+     
+    def readrow2(self):
+        while True:
+            if self.currentrow>=len(self.row):
+                break
+            if self.stop2==1:
+                break
+            for z in xrange(len(endofmo)):
+                tmp=self.row[self.currentrow]
+                tmp2=tmp.split()
+                if endofmo[z] in tmp2:
+                    self.stop2=1
+                    break
+            for z in xrange(len(atomic_labels)):
+                if atomic_labels[z] in self.row[self.currentrow] and self.stop2!=1:
+                    self.split_a_row(self.row[self.currentrow],self.currentrow)
+                    break
+            if len(self.rowread)>0:
+                if self.rowread[-1]==(self.currentrow-2) and self.stop2!=1:
+                    self.mo_len.append(len(self.a_orbs))
+                    self.a_orbs_sym.append(self.a_orbs)
+                    self.atoml_sym.append(self.atoml)
+                    self.a_orbs=[]
+                    self.atoml=[]
+                    self.add_m_orb(self.currentrow)
+            self.currentrow +=1
+
+    def returnrow(self):
+        return self.currentrow
+
+    def add_m_orb(self,startrow):
+        self.stop=0
+        self.m_orb_coef_tmp=[]
+        while True:
+            if len(self.row)>(self.currentrow):
+                if self.row[self.currentrow].strip():
+                    while True:
+                        if len(self.m_orb_coef_tmp)<self.mo_len[-1]:
+                            if len(self.row)>(self.currentrow):
+                                self.split_row(self.row[self.currentrow])
+                            else:
+                                self.m_orb_coef.append(self.m_orb_coef_tmp)
+                                break
+                            self.currentrow+=1
+                        elif len(self.m_orb_coef_tmp)==self.mo_len[-1]:
+                            self.m_orb_coef.append(self.m_orb_coef_tmp)
+                            self.m_orb_coef_tmp=[]
+                            break
+                        elif len(self.m_orb_coef_tmp)>self.mo_len[-1]:
+                            print 'error',self.currentrow
+                        if self.stop==1:
+                            break
+                if self.stop==1:
+                    self.stop=0
+#                    print self.m_orb_label
+#                    print self.m_orb_e_num
+#                    print self.m_orb_energy
+#                    print self.m_orb_coef
+                    self.m_orb_label_sym.append(self.m_orb_label)
+                    self.m_orb_e_num_sym.append(self.m_orb_e_num)
+                    self.m_orb_energy_sym.append(self.m_orb_energy)
+                    self.m_orb_coef_sym.append(self.m_orb_coef)
+                    self.m_orb_label=[]
+                    self.m_orb_e_num=[]
+                    self.m_orb_energy=[]
+                    self.m_orb_coef=[]
+                    self.currentrow-=2
+                    break
+            else:
+                self.m_orb_label_sym.append(self.m_orb_label)
+                self.m_orb_e_num_sym.append(self.m_orb_e_num)
+                self.m_orb_energy_sym.append(self.m_orb_energy)
+                self.m_orb_coef_sym.append(self.m_orb_coef)
+                self.m_orb_label=[]
+                self.m_orb_e_num=[]
+                self.m_orb_energy=[]
+                self.m_orb_coef=[]
+                break
+            self.currentrow+=1
+
+
+    def split_row(self,row):
+        if row.strip():
+            self.tmpsplit=row.split()
+            for z in xrange(len(atomic_labels)):
+                if atomic_labels[z] in self.tmpsplit:
+                    self.stop=1
+                    break
+            for z in xrange(len(endofmo)):
+                if endofmo[z] in self.tmpsplit:
+                    self.stop=1
+                    break
+            for x in xrange(len(self.tmpsplit)):
+                tmp=self.tmpsplit[x]
+                tmp3=split_float(tmp)
+                if type(tmp3) is list:
+                    tmp1=len(self.tmpsplit)
+                    self.tmpsplit[x]=tmp3[0]
+                    for y in xrange(1,len(tmp3)):
+                        self.tmpsplit.insert(x+y,tmp3[y])
+            if self.stop==1:
+                return
+            if self.rhf==1:
+                self.split_rhf_row()
+            else:
+#                if self.mo_len[-1]>9:
+#                   if len(self.tmpsplit)==13:
+#                       self.m_orb_label.append(self.tmpsplit[0])
+#                       self.m_orb_e_num.append(self.tmpsplit[1])
+#                       self.m_orb_energy.append(self.tmpsplit[2])
+#                       for y in xrange(len(self.tmpsplit)-3):
+#                           if len(self.m_orb_coef_tmp)<self.mo_len[-1]:
+#                               self.m_orb_coef_tmp.append(self.tmpsplit[y+3])
+                if len(self.tmpsplit)==self.mo_len[-1]+3 and self.mo_len[-1] < 9 or self.mo_len[-1] > 9 and len(self.tmpsplit)==13:
+                    self.m_orb_label.append(self.tmpsplit[0])
+                    self.m_orb_e_num.append(self.tmpsplit[1])
+                    self.m_orb_energy.append(self.tmpsplit[2])
+                    for y in xrange(len(self.tmpsplit)-3):
+                        if len(self.m_orb_coef_tmp)<self.mo_len[-1]:
+                            self.m_orb_coef_tmp.append(self.tmpsplit[y+3])
+                else:
+                    self.mo_only()
+
+    def split_rhf_row(self):
+        if len(self.tmpsplit)==self.mo_len[-1]+3 and self.mo_len[-1] < 9 or self.mo_len[-1] > 9 and len(self.tmpsplit)==13:
+            self.m_orb_label.append(self.tmpsplit[0])
+            self.m_orb_e_num.append(self.tmpsplit[1])
+            etemp=self.tmpsplit[2]
+            etmp2=etemp.split('-')
+            if etmp2[0]:
+                str= etmp2[0]
+            else:
+                str='-' + etmp2[1]
+            enew=float(str)
+            self.m_orb_energy.append(enew)
+            for y in xrange(len(self.tmpsplit)-3):
+                if len(self.m_orb_coef_tmp)<self.mo_len[-1]:
+                    self.m_orb_coef_tmp.append(self.tmpsplit[y+3])
+        elif len(self.tmpsplit)==self.mo_len[-1]+4 and self.mo_len[-1] < 9 or self.mo_len[-1] > 9 and len(self.tmpsplit)==14:
+            self.m_orb_label.append(self.tmpsplit[0])
+            self.m_orb_e_num.append(self.tmpsplit[1])
+            self.m_orb_energy.append(self.tmpsplit[2])
+            for y in xrange(len(self.tmpsplit)-4):
+                if len(self.m_orb_coef_tmp)<self.mo_len[-1]:
+                    self.m_orb_coef_tmp.append(self.tmpsplit[y+4])
+        else:
+            self.mo_only()
+
+    def mo_only(self):
+        if len(self.tmpsplit)==10:
+            for y in xrange(len(self.tmpsplit)):
+                if len(self.m_orb_coef_tmp)<self.mo_len[-1]:
+                    self.m_orb_coef_tmp.append(self.tmpsplit[y])
+        elif len(self.tmpsplit)==(self.mo_len[-1]-len(self.m_orb_coef_tmp)):
+            for y in xrange(len(self.tmpsplit)):
+                self.m_orb_coef_tmp.append(self.tmpsplit[y])
+
+    def pri_orb(self):
+        print self.a_orbs_sym
+        print self.atoml_sym
+
+    def pri_m_orb(self,threshhold):
+#        print self.a_orb_label
+#        print len(self.m_orb_coef),len(self.m_orb_label), len(self.m_orb_e_num), len(self.m_orb_energy)
+#        print len(self.m_orb_coef_sym),len(self.m_orb_label_sym), len(self.m_orb_e_num_sym), len(self.m_orb_energy_sym)
+        if len(self.m_orb_label_sym)>0:
+            print ''
+            print ''
+            print ''
+            print 'Next set of orbitals'
+        for x in xrange(len(self.m_orb_label_sym)):
+            print ''
+            for y in xrange(len(self.m_orb_label_sym[x])):
+#                print len(self.m_orb_coef_sym[x]),len(self.m_orb_label_sym[x]), len(self.m_orb_e_num_sym[x]), len(self.m_orb_energy_sym[x])
+                tmp1=[]
+                tmp2=[]
+                tmpstr=''
+                for z in xrange(len(self.m_orb_coef_sym[x][y])):
+                    if abs(float(self.m_orb_coef_sym[x][y][z])) > float(threshhold):
+                        tmp1.append(abs(float(self.m_orb_coef_sym[x][y][z])))
+                        tmp2.append(str(self.a_orb_label[x][z]) + ' '+ fillfloatround(str(self.m_orb_coef_sym[x][y][z]),2))
+                sorttmp1=sorted(tmp1,reverse=True)
+                ordertmp1=sort(tmp1,sorttmp1)
+                for x1 in xrange(len(tmp1)):
+                    tmpstr= tmpstr+ '  ' + tmp2[ordertmp1[x1]]
+
+#                        tmpstr=tmpstr + ' '
+                print self.m_orb_label_sym[x][y].ljust(5), fillfloatround(self.m_orb_e_num_sym[x][y],2).ljust(5), fillfloatround(self.m_orb_energy_sym[x][y],3).ljust(8), tmpstr
+#                print '                       ', self.a_orb_label[x]
+#                print self.m_orb_label_sym[x][y], self.m_orb_e_num_sym[x][y], self.m_orb_energy_sym[x][y], self.m_orb_coef_sym[x][y]
+#                print len(self.m_orb_coef_sym[x][y]),len(self.a_orb_label[x])
+
+def fillfloatround(valuein,numdigits):
+    try:
+        value=round(float(valuein),numdigits)
+    except ValueError:
+        return valuein.ljust(numdigits)
+    tmp=str(value)
+    totlen=len(tmp)
+    tmp2=tmp.split('.')
+    intlen=len(tmp2[0])
+    lennew=int(intlen + numdigits + 1 )
+    if "e" in tmp:
+        return tmp.ljust(numdigits+2,' ')
+    else:
+        return tmp.ljust(lennew,'0')
+
+def split_float(inp):
+    try:
+#        import string
+#        all=string.maketrans('','')
+#        nodigs=all.translate(all, string.digits)
+#        digits=inp.translate(all, nodigs)
+#        float(digits)
+        float(inp)
+        return inp
+    except ValueError:
+        out=[]
+        if inp!='-':
+            tmp=inp.split('-')
+            if len(tmp)>1:
+                for x in xrange(len(tmp)):
+                    if tmp[x]:
+                        tmp[x]='-' + tmp[x]
+                        out.append(tmp[x])
+                return out
+            else:
+                return inp
+        else:
+            return inp
+
+def sort(inp = [] ,ref = [] ):
+    tmpline2=len(inp)
+    i = 0
+    global ref_order
+    ref_order = []
+    while i <= (tmpline2-1):
+        j = 0
+        while j <= (tmpline2-1):
+            if inp[j] == ref[i]:
+                ref_order.append(j)
+                break
+            j += 1
+        i += 1
+    return ref_order
+
+import sys
+
+if len(sys.argv) > 1:
+    txt=sys.argv[1]
+else:
+    txt= raw_input("inpfile> ")
+txt=open(txt)
+row=txt.readlines()
+a=orbital(row)
+
+if len(sys.argv) > 2:
+    thresh=sys.argv[2]
+else:
+    thresh= raw_input("threshhold> ")
+
+a.readrow()
+a.label_a_orb()
+#a.pri_orb()
+a.pri_m_orb(thresh)
+currentrow=a.returnrow()
+while True:
+    if int(currentrow)+10<len(row):
+        tmp2=[]
+        for x in xrange(currentrow,len(row)):
+            tmp2.append(row[x])
+        row=tmp2
+        b=orbital(row)
+        b.readrow()
+        b.label_a_orb()
+        b.pri_m_orb(thresh)
+        currentrow=b.returnrow()
+    else:
+        break
