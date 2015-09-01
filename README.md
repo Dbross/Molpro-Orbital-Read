@@ -1,6 +1,5 @@
 # Molpro-Orbital-Read
-This is a python script that reads a molpro output and looks for certain keywords involved with printed orbitals. This works for both the M
-CSCF and SCF modules, and could work for others, but these have not been debugged. If invoked with no arguments it will ask for the input
+This is a python script that reads a molpro output and looks for certain keywords involved with printed orbitals. This works for both the MCSCF and SCF modules, and could work for others, but these have not been debugged. If invoked with no arguments it will ask for the input
 file name and a threshold below which to not print the coefficients. If arguments are supplied, it will assume that they are:
 $ Filepath (valid file in path) $ threshold (valid float)
 
